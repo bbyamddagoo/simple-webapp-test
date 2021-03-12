@@ -1,27 +1,16 @@
 version: 0.2
-env:
-  variables:
-    CLUSTER_NAME: "hbhan-eks-cluster-1"
-    NAMESPACE_NAME: "ns-tomcat-8529"
-    DEPLOYMENT_NAME_1: "simple-webapp-blue-v1"
-    DEPLOYMENT_NAME_2: "simple-webapp-green-v1"
+
 phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
       - aws --version
-      # ECR login
-      - $(aws ecr get-login --region ap-northeast-2 --no-include-email) 
+      - $(aws ecr get-login --region ap-northeast-2 --no-include-email)
       - REPOSITORY_URI=061203270663.dkr.ecr.ap-northeast-2.amazonaws.com/simple-webapp
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
       - echo $COMMIT_HASH
       - echo $IMAGE_TAG
-      # EKS login & kubectl install
-      - $(aws eks --region ap-northeast-2 update-kubeconfig --name $CLUSTER_NAME)
-      - curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
-      - chmod +x ./kubectl
-      - mv ./kubectl /usr/bin/
   build:
     commands:
       - echo Build started on `date`
@@ -30,14 +19,11 @@ phases:
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
   post_build:
     commands:
-      # ECR push
       - echo Build completed on `date`
       - echo Pushing the Docker images...
       - docker push $REPOSITORY_URI:latest
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - echo Writing image definitions file...
       - printf '[{"name":"build-docker","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
-      # EKS Deploy Rollout
-      - kubectl rollout restart deployment/$DEPLOYMENT_NAME_1 -n $NAMESPACE_NAME
 artifacts:
     files: imagedefinitions.json
