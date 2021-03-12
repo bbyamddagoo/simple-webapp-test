@@ -6,6 +6,8 @@ env:
     NAMESPACE_NAME: "ns-tomcat-8529"
     DEPLOYMENT_NAME_1: "simple-webapp-blue-v1"
     DEPLOYMENT_NAME_2: "simple-webapp-green-v1"
+    SECRET_NAME: "###################"
+    ACCESS_NAME: "##########################################"
     
 phases:
   pre_build:
@@ -30,6 +32,13 @@ phases:
       - docker build -t $REPOSITORY_URI:latest .
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
       # EKS login
+      - SECRET=$(echo $SECRET_NAME | base64 --decode)
+      - echo $SECRET
+      - ACCESS=$(echo $ACCESS_NAME | base64 --decode)
+      - echo $ACCESS
+      - aws configure set aws_access_key_id $SECRET
+      - aws configure set aws_secret_access_key $ACCESS
+      - aws configure set default.region $REGION
       - aws eks --region ap-northeast-2 update-kubeconfig --name $CLUSTER_NAME
   post_build:
     commands:
