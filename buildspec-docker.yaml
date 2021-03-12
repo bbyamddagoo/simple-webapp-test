@@ -8,6 +8,7 @@ env:
 phases:
   pre_build:
     commands:
+      - yum install curl -y
       - echo Logging in to Amazon ECR...
       - aws --version
       # ECR login
