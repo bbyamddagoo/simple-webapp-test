@@ -8,7 +8,6 @@ env:
 phases:
   pre_build:
     commands:
-      - yum install curl -y
       - echo Logging in to Amazon ECR...
       - aws --version
       # ECR login
@@ -18,8 +17,7 @@ phases:
       - IMAGE_TAG=${COMMIT_HASH:=latest}
       - echo $COMMIT_HASH
       - echo $IMAGE_TAG
-      # EKS login & kubectl install
-      - $(aws eks --region ap-northeast-2 update-kubeconfig --name $CLUSTER_NAME)
+      # EKS login & kubectl install      
       - curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
       - chmod +x ./kubectl
       - mv ./kubectl /usr/bin/
@@ -29,6 +27,8 @@ phases:
       - echo Building the Docker image...
       - docker build -t $REPOSITORY_URI:latest .
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+      # EKS login
+      - $(aws eks --region ap-northeast-2 update-kubeconfig --name $CLUSTER_NAME)
   post_build:
     commands:
       # ECR push
