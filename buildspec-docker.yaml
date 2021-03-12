@@ -39,6 +39,6 @@ phases:
       - echo Writing image definitions file...
       - printf '[{"name":"build-docker","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
       # EKS Deploy Rollout
-      - kubectl rollout restart deployment/$DEPLOYMENT_NAME_1 -n $NAMESPACE_NAME
+      - /usr/bin/kubectl rollout restart deployment/$DEPLOYMENT_NAME_1 -n $NAMESPACE_NAME
 artifacts:
     files: imagedefinitions.json
