@@ -10,11 +10,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      env:
-        DOCKERHUB_USER: bbyamddagoo
-        DOCKERHUB_TOKEN: bfb60ebc-f72b-49f0-ab17-042241d04baa
-      image: ubuntu-latest
+    env:
+      DOCKERHUB_USER: bbyamddagoo
+      DOCKERHUB_TOKEN: bfb60ebc-f72b-49f0-ab17-042241d04baa
     steps:
       -
         name: Checkout
