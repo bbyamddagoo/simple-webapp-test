@@ -1,0 +1,160 @@
+# image: docker:latest
+# services:
+#   - docker:dind
+
+# variables:
+#   DOC_NAME: sample #도메인명
+
+# workflow:
+#   rules:
+#     - changes:
+#         - helm/**/*
+#         - helm/*
+#       when: never
+#     - when: always
+#     - if: '$CI_COMMIT_BRANCH == "develop"'
+#     - if: '$CI_COMMIT_BRANCH == "main"'
+
+# stages:
+#   - build
+#   - static-analysis
+#   - package
+#   - deploy
+#   - cleanup
+
+# maven-build:
+#   image: maven:3-openjdk-11
+#   stage: build
+#   script:
+#     - "export LD_LIBRARY_PATH=/usr/local/damo/Lib"
+#     - "wget -O damo.tar https://nexus.digitallina.com/repository/ldc-releases/ldc/solution/damo/setup/damo-setup/1.0/damo-setup-1.0.tar && mv damo.tar /usr/local"
+#     - "tar xvf /usr/local/damo.tar -C /usr/local"
+#     - "mvn clean package -P dev"
+#   artifacts:
+#     paths:
+#       - target/*.jar
+#       - target/classes/static/docs
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+#     - if: '$CI_COMMIT_BRANCH == "develop"'
+#     - if: '$CI_COMMIT_BRANCH == "main"'
+
+# static-analysis:
+#   image: maven:3-jdk-8
+#   stage: static-analysis
+#   variables:
+#     SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+#     GIT_DEPTH: "0"
+#   cache:
+#     key: "${CI_JOB_NAME}"
+#     paths:
+#         - .sonar/cache
+#   script:
+#     - "mvn sonar:sonar -Dsonar.qualitygate.wait=true -Dproject.settings=${CI_PROJECT_DIR}/sonar-project.properties"
+#   only:
+#     - main
+#     - /^issue-.*$/
+#     - merge_requests
+
+# docker-build:
+#   stage: package
+#   #before_script:
+#     #- apk update && apk add git
+#     #- git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@git.digitallina.com/ldc/config/ldc-config.git config
+#     #- unzip target/*.jar -d target/dependency
+#   script:
+#   - docker build -t $CI_HARBOR_URL/$CI_HARBOR_PROJECT/$CI_PROJECT_NAME:$CI_COMMIT_SHA -t $CI_HARBOR_URL/$CI_HARBOR_PROJECT/$CI_PROJECT_NAME:latest .
+#   rules:
+#     - if: '$CI_COMMIT_BRANCH == "develop"'
+#     - if: '$CI_COMMIT_BRANCH == "main"'
+
+# docker-deploy:
+#   stage: deploy
+#   script:
+#   - docker login -u $CI_DOCKER_USER -p $CI_DOCKER_PASSWORD $CI_HARBOR_URL
+#   - docker push $CI_HARBOR_URL/$CI_HARBOR_PROJECT/$CI_PROJECT_NAME:$CI_COMMIT_SHA
+#   - docker push $CI_HARBOR_URL/$CI_HARBOR_PROJECT/$CI_PROJECT_NAME:latest
+
+# deploy-to-s3:
+#   image: python:latest
+#   stage: deploy
+#   script:
+#     - pip install awscli
+#     - aws s3 sync target/classes/static/docs s3://devrestdocs.digitallina.com/restdoc/api/$DOC_NAME --acl public-read
+
+# cleanup_job:
+#   stage: cleanup
+#   script:
+#     - docker rmi $CI_HARBOR_URL/$CI_HARBOR_PROJECT/$CI_PROJECT_NAME:$CI_COMMIT_SHA
+#     - docker rmi $CI_HARBOR_URL/$CI_HARBOR_PROJECT/$CI_PROJECT_NAME:latest
+#   rules:
+#     - if: '$CI_COMMIT_BRANCH == "develop"'
+#     - if: '$CI_COMMIT_BRANCH == "main"'
+
+stages:
+#   - build
+# #  - test
+  - package
+  - deploy
+
+# build:
+#   image: amazoncorretto:17.0.3-alpine3.15
+#   stage: build
+#   artifacts:
+#     paths:
+#       - build/libs/*.jar
+#     expire_in: 1 week
+#   only:
+#     - /^.*ci-test.*$/
+#     - main
+#     - tags
+# #  cache:
+# #    key: whenever-with-dependencies
+# #    paths:
+# #      - .gradle/wrapper
+# #      - .gradle/cache
+#   before_script:
+#     - echo '### initialize variables'
+#     - export GRADLE_USER_HOME=`pwd`/.gradle
+#     - echo "GRADLE_USER_HOME >> ${GRADLE_USER_HOME}"
+# #    - echo '### check paths'
+# #    - pwd
+# #    - ls -a ./
+# #    - echo '### check caches'
+# #    - ls -a "$GRADLE_USER_HOME" || true
+# #    - ls -a /cache || true
+# #    - ls -a /cache/caches || true
+#   script:
+#     - echo "### load caches to ${GRADLE_USER_HOME}"
+#     - mkdir $GRADLE_USER_HOME
+# #    - cp -r /cache/wrapper /cache/caches $GRADLE_USER_HOME || true
+#     - chmod +x gradlew
+#     - ./gradlew clean build -g $GRADLE_USER_HOME
+#   after_script:
+#     - echo '### - check caches'
+#     - ls -a "$GRADLE_USER_HOME" || true
+#     - echo '### check artifacts'
+#     - ls -al ./build/libs/*
+#     - echo '### finish check'
+
+#test:
+#  stage: test
+#  script: ./gradlew check
+
+docker-build:
+  stage: package
+  only:
+    - main
+    - tags
+  script:
+    - docker build -t $CI_HARBOR_URL/$CI_HARBOR_PROJECT/$CI_PROJECT_NAME:latest -t $CI_HARBOR_URL/$CI_HARBOR_PROJECT/$CI_PROJECT_NAME:$CI_COMMIT_SHA .
+
+docker-deploy:
+  stage: deploy
+  only:
+    - main
+    - tags
+  script:
+    - docker login -u $CI_DOCKER_USER -p $CI_DOCKER_PASSWORD $CI_HARBOR_URL
+    - docker push $CI_HARBOR_URL/$CI_HARBOR_PROJECT/$CI_PROJECT_NAME:latest
+    - docker push $CI_HARBOR_URL/$CI_HARBOR_PROJECT/$CI_PROJECT_NAME:$CI_COMMIT_SHA
